@@ -143,6 +143,21 @@ export default function App() {
   const [tableSortKey, setTableSortKey] = useState<string>('sharpe');
   const [tableSortDir, setTableSortDir] = useState<'desc' | 'asc' | null>('desc');
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastScrollPosition = useRef<number>(0);
+
+  const changeView = (newView: 'global' | 'detail') => {
+    if (view === 'global' && newView === 'detail' && containerRef.current) {
+      lastScrollPosition.current = containerRef.current.scrollTop;
+    }
+    setView(newView);
+  };
+
+  useEffect(() => {
+    if (view === 'global' && containerRef.current) {
+      containerRef.current.scrollTop = lastScrollPosition.current;
+    }
+  }, [view]);
 
   // Persist exclusion zones
   useEffect(() => {
@@ -242,7 +257,8 @@ export default function App() {
         const valB = getter(b[1].metrics, b[0]);
         const dir = tableSortDir === 'asc' ? 1 : -1;
         if (typeof valA === 'string' && typeof valB === 'string') return dir * valA.localeCompare(valB);
-        return dir * ((valB as number) - (valA as number));
+        // Corrected numeric sort: (valB - valA) for DESC (dir=-1), (valA - valB) for ASC (dir=1)
+        return dir === -1 ? (valB as number) - (valA as number) : (valA as number) - (valB as number);
       });
   }, [data, filters, search, tableSortKey, tableSortDir]);
 
@@ -290,7 +306,7 @@ export default function App() {
       if (view === 'detail') {
         if (e.key === 'ArrowRight') navigatePair('next');
         if (e.key === 'ArrowLeft') navigatePair('prev');
-        if (e.key === 'Escape') setView('global');
+        if (e.key === 'Escape') changeView('global');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -454,7 +470,7 @@ export default function App() {
           <div className="flex items-center gap-4 flex-1">
             {view === 'detail' && (
               <button 
-                onClick={() => setView('global')}
+                onClick={() => changeView('global')}
                 className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -489,6 +505,19 @@ export default function App() {
                 </button>
                 <div className="h-8 w-px bg-gray-100 mx-2" />
                 <button 
+                  onClick={() => toggleShortlist(selectedPair!)}
+                  className={cn(
+                    "p-2.5 rounded-xl transition-colors",
+                    shortlist.has(selectedPair!) 
+                      ? "text-blue-600 bg-blue-50 hover:bg-blue-100" 
+                      : "text-gray-400 hover:text-blue-600 hover:bg-gray-50"
+                  )}
+                  title={shortlist.has(selectedPair!) ? "Remove from shortlist" : "Add to shortlist"}
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+                <div className="h-8 w-px bg-gray-100 mx-2" />
+                <button 
                   onClick={() => navigatePair('prev')}
                   className="p-2.5 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-gray-900"
                 >
@@ -505,7 +534,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-[#F8F9FC] custom-scrollbar">
+        <div className="flex-1 overflow-y-auto bg-[#F8F9FC] custom-scrollbar" ref={containerRef}>
           {view === 'global' ? (
             <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {Object.keys(data).length === 0 ? (
@@ -627,7 +656,7 @@ export default function App() {
                               )}
                               onClick={() => {
                                 setSelectedPair(pair);
-                                setView('detail');
+                                changeView('detail');
                               }}
                             >
                               <td className="px-8 py-6" onClick={e => e.stopPropagation()}>
