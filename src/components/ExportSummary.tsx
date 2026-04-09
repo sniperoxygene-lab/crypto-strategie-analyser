@@ -26,31 +26,139 @@ export function ExportSummary({ pair, metrics, filteredMetrics, walletHistory }:
     { label: 'Profit Factor', original: formatVal(metrics.profit_factor), filtered: filteredMetrics ? formatVal(filteredMetrics.profit_factor) : null },
   ];
 
+  // Inline styles for absolute capture reliability
+  const styles = {
+    container: {
+      width: '1000px',
+      backgroundColor: 'white',
+      padding: '60px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#111827'
+    },
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+      borderBottom: '4px solid #000',
+      paddingBottom: '20px',
+      marginBottom: '40px'
+    },
+    title: {
+      fontSize: '42px',
+      fontWeight: 900,
+      margin: 0,
+      letterSpacing: '-0.02em',
+      textTransform: 'uppercase' as const
+    },
+    subtitle: {
+      fontSize: '14px',
+      fontWeight: 700,
+      color: '#6B7280'
+    },
+    grid: {
+      display: 'flex',
+      gap: '40px'
+    },
+    leftCol: {
+      flex: 1
+    },
+    rightCol: {
+      width: '500px'
+    },
+    sectionTitle: {
+      fontSize: '18px',
+      fontWeight: 900,
+      backgroundColor: '#000',
+      color: '#fff',
+      padding: '6px 16px',
+      display: 'inline-block',
+      marginBottom: '24px',
+      textTransform: 'uppercase' as const
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'collapse' as const
+    },
+    th: {
+      textAlign: 'left' as const,
+      fontSize: '11px',
+      fontWeight: 900,
+      color: '#9CA3AF',
+      textTransform: 'uppercase' as const,
+      padding: '8px 0',
+      borderBottom: '2px solid #E5E7EB'
+    },
+    tdLabel: {
+      padding: '16px 0',
+      fontSize: '15px',
+      fontWeight: 700,
+      color: '#4B5563',
+      borderBottom: '1px solid #F3F4F6'
+    },
+    tdValue: {
+      padding: '16px 0',
+      fontSize: '20px',
+      fontWeight: 900,
+      borderBottom: '1px solid #F3F4F6'
+    },
+    chartBox: {
+      backgroundColor: '#F9FAFB',
+      padding: '24px',
+      borderRadius: '24px',
+      border: '2px solid #F3F4F6',
+      marginBottom: '32px'
+    },
+    chartTitle: {
+      fontSize: '12px',
+      fontWeight: 900,
+      color: '#9CA3AF',
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.05em',
+      marginBottom: '16px'
+    },
+    footer: {
+      marginTop: '40px',
+      backgroundColor: '#EFF6FF',
+      padding: '24px',
+      borderRadius: '24px',
+      border: '2px solid #DBEAFE'
+    },
+    footerText: {
+      fontSize: '12px',
+      fontWeight: 700,
+      color: '#2563EB',
+      margin: 0,
+      textTransform: 'uppercase' as const,
+      lineHeight: 1.5
+    }
+  };
+
   return (
-    <div id="export-container" className="bg-white p-12 text-gray-900 font-sans" style={{ width: '1000px' }}>
-      <div className="flex justify-between items-baseline border-b-4 border-black pb-4 mb-8">
-        <h1 className="text-4xl font-black">{pair} PERFORMANCE SUMMARY</h1>
-        <span className="text-sm font-bold text-gray-500">Generated on {new Date().toLocaleDateString()}</span>
+    <div id="export-container" style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>{pair} PERFORMANCE SUMMARY</h1>
+        <span style={styles.subtitle}>Generated on {new Date().toLocaleDateString()}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-12 mb-12">
-        <div className="space-y-6">
-          <h2 className="text-xl font-black bg-black text-white px-4 py-1 inline-block">STRATEGY METRICS</h2>
-          <table className="w-full text-left">
+      <div style={styles.grid}>
+        {/* Metrics Column */}
+        <div style={styles.leftCol}>
+          <h2 style={styles.sectionTitle}>Key Performance Indicators</h2>
+          <table style={styles.table}>
             <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="py-2 text-xs font-black uppercase text-gray-400">Metric</th>
-                <th className="py-2 text-xs font-black uppercase text-gray-400">Original</th>
-                {filteredMetrics && <th className="py-2 text-xs font-black uppercase text-blue-600">Filtered</th>}
+              <tr>
+                <th style={styles.th}>Metric</th>
+                <th style={styles.th}>Original</th>
+                {filteredMetrics && <th style={{ ...styles.th, color: '#2563EB' }}>Filtered</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {metricRows.map((row) => (
                 <tr key={row.label}>
-                  <td className="py-3 font-bold text-gray-600">{row.label}</td>
-                  <td className="py-3 font-black text-lg">{row.original}</td>
+                  <td style={styles.tdLabel}>{row.label}</td>
+                  <td style={styles.tdValue}>{row.original}</td>
                   {filteredMetrics && (
-                    <td className="py-3 font-black text-lg text-blue-600">{row.filtered}</td>
+                    <td style={{ ...styles.tdValue, color: '#2563EB' }}>{row.filtered}</td>
                   )}
                 </tr>
               ))}
@@ -58,34 +166,34 @@ export function ExportSummary({ pair, metrics, filteredMetrics, walletHistory }:
           </table>
         </div>
 
-        <div className="space-y-8">
-          <div className="bg-gray-50 p-6 border-2 border-gray-100 rounded-2xl">
-            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Equity Curve</h3>
-            <div style={{ height: '220px', width: '900px' }}>
-              <LineChart width={900} height={220} data={walletHistory}>
+        {/* Charts Column */}
+        <div style={styles.rightCol}>
+          <div style={styles.chartBox}>
+            <h3 style={styles.chartTitle}>Equity Curve (Growth)</h3>
+            <div style={{ height: '200px', width: '450px' }}>
+              <LineChart width={450} height={200} data={walletHistory}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                 <XAxis dataKey="date" hide />
                 <YAxis domain={['auto', 'auto']} hide />
-                <Line type="stepAfter" dataKey="wallet" stroke="#2962FF" strokeWidth={3} dot={false} isAnimationActive={false} />
+                <Line type="stepAfter" dataKey="wallet" stroke="#2563EB" strokeWidth={3} dot={false} isAnimationActive={false} />
               </LineChart>
             </div>
           </div>
 
-          <div className="bg-gray-50 p-6 border-2 border-gray-100 rounded-2xl">
-            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Drawdown Analysis</h3>
-            <div style={{ height: '120px', width: '900px' }}>
-              <AreaChart width={900} height={120} data={walletHistory}>
-                <Area type="monotone" dataKey="dd_pct" stroke="#EF5350" fill="#EF5350" fillOpacity={0.2} isAnimationActive={false} />
+          <div style={styles.chartBox}>
+            <h3 style={styles.chartTitle}>Drawdown Analysis (Risk)</h3>
+            <div style={{ height: '100px', width: '450px' }}>
+              <AreaChart width={450} height={100} data={walletHistory}>
+                <Area type="monotone" dataKey="dd_pct" stroke="#EF4444" fill="#EF4444" fillOpacity={0.2} isAnimationActive={false} />
               </AreaChart>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-blue-50 p-6 border-2 border-blue-100 rounded-2xl">
-        <p className="text-xs font-bold text-blue-600 leading-relaxed uppercase">
-          * Note: Combined view showing both original backtest results and filtered metrics (exclusion zone applied).
-          Data strictly provided for strategy auditing and AI assessment.
+      <div style={styles.footer}>
+        <p style={styles.footerText}>
+          * Note: This summary provides a combined view of the original backtest results and the recalculated performance metrics following the applied exclusion zone.
         </p>
       </div>
     </div>

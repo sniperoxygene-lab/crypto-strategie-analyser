@@ -24,7 +24,7 @@ import {
   Copy,
   Download as DownloadIcon
 } from 'lucide-react';
-import domtoimage from 'dom-to-image-more';
+import * as htmlToImage from 'html-to-image';
 import { ExportSummary } from './components/ExportSummary';
 import { 
   cn, 
@@ -171,19 +171,19 @@ export default function App() {
       const element = document.getElementById('export-container');
       if (!element) throw new Error('Export container not found');
 
-      const canvas = await domtoimage.toPng(element, {
-        bgcolor: '#ffffff',
+      const dataUrl = await htmlToImage.toPng(element, {
+        backgroundColor: '#ffffff',
         width: 1000,
-        height: 600, // Approximate height of ExportSummary
+        pixelRatio: 2,
       });
 
       if (type === 'download') {
         const link = document.createElement('a');
         link.download = `${selectedPair?.replace(/\//g, '-')}-performance.png`;
-        link.href = canvas;
+        link.href = dataUrl;
         link.click();
       } else {
-        const blob = await domtoimage.toBlob(element, { bgcolor: '#ffffff' });
+        const blob = await htmlToImage.toBlob(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
         if (!blob) return;
         try {
           await navigator.clipboard.write([
@@ -1232,7 +1232,7 @@ export default function App() {
 
       {/* Off-screen Export Container */}
       {view === 'detail' && selectedPair && data[selectedPair] && (
-        <div style={{ position: 'fixed', left: 0, top: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', left: 0, top: 0, height: 0, overflow: 'hidden', zIndex: -100, pointerEvents: 'none' }}>
           <ExportSummary 
             pair={selectedPair} 
             metrics={data[selectedPair].metrics} 
