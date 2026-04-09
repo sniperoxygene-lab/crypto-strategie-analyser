@@ -150,13 +150,36 @@ export function processStrategyData(rawJson: any) {
   
   Object.entries(rawJson).forEach(([pair, pairData]: [string, any]) => {
     const rawHistory = pairData.wallet_history || [];
+    
+    // Heuristic to detect if percentages are in decimal form (e.g. 0.05 for 5%)
+    const mRaw = pairData.metrics || {};
+    const needsMultiplication = (mRaw.max_drawdown_pct > 0 && mRaw.max_drawdown_pct < 1) || 
+                               (Math.abs(mRaw.annual_return_pct) > 0 && Math.abs(mRaw.annual_return_pct) < 0.5);
+
+    const maybeMult = (val: number) => needsMultiplication ? val * 100 : val;
+
     const walletHistory = downsample(rawHistory, 500);
     const formattedHistory = walletHistory.map((w: any) => ({
       ...w,
-      dateFormatted: w.date.split(' ')[0]
+      dd_pct: maybeMult(w.dd_pct || 0),
+      dateFormatted: (w.date || '').split(' ')[0]
     }));
 
-    const trades = pairData.trades || [];
+    const metrics = {
+      ...mRaw,
+      annual_return_pct: maybeMult(mRaw.annual_return_pct || 0),
+      max_drawdown_pct: maybeMult(mRaw.max_drawdown_pct || 0),
+      win_rate_pct: maybeMult(mRaw.win_rate_pct || 0),
+      best_trade_pct: maybeMult(mRaw.best_trade_pct || 0),
+      worst_trade_pct: maybeMult(mRaw.worst_trade_pct || 0),
+      avg_trade_pct: maybeMult(mRaw.avg_trade_pct || 0),
+      duration: '' // Will be set below
+    };
+
+    const trades = (pairData.trades || []).map((t: any) => ({
+      ...t,
+      pnl_pct: maybeMult(t.pnl_pct || 0)
+    }));
     const longs = trades.filter((t: any) => t.side === 'LONG').length;
     const shorts = trades.filter((t: any) => t.side === 'SHORT').length;
     
@@ -213,9 +236,10 @@ export function processStrategyData(rawJson: any) {
     processed[pair] = {
       ...pairData,
       metrics: {
-        ...pairData.metrics,
+        ...metrics,
         duration: durationStr
       },
+      trades,
       raw_wallet_history: rawHistory,
       wallet_history: formattedHistory,
       precomputed: {
