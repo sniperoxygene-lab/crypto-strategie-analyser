@@ -1,6 +1,6 @@
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  ResponsiveContainer, AreaChart, Area
+  AreaChart, Area
 } from 'recharts';
 import { formatCurrency } from '../utils';
 
@@ -61,26 +61,22 @@ export function ExportSummary({ pair, metrics, filteredMetrics, walletHistory }:
         <div className="space-y-8">
           <div className="bg-gray-50 p-6 border-2 border-gray-100 rounded-2xl">
             <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Equity Curve</h3>
-            <div style={{ height: '220px', width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={walletHistory}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="date" hide />
-                  <YAxis domain={['auto', 'auto']} hide />
-                  <Line type="stepAfter" dataKey="wallet" stroke="#2962FF" strokeWidth={3} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div style={{ height: '220px', width: '900px' }}>
+              <LineChart width={900} height={220} data={walletHistory}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="date" hide />
+                <YAxis domain={['auto', 'auto']} hide />
+                <Line type="stepAfter" dataKey="wallet" stroke="#2962FF" strokeWidth={3} dot={false} isAnimationActive={false} />
+              </LineChart>
             </div>
           </div>
 
           <div className="bg-gray-50 p-6 border-2 border-gray-100 rounded-2xl">
             <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Drawdown Analysis</h3>
-            <div style={{ height: '120px', width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={walletHistory}>
-                  <Area type="monotone" dataKey="dd_pct" stroke="#EF5350" fill="#EF5350" fillOpacity={0.2} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div style={{ height: '120px', width: '900px' }}>
+              <AreaChart width={900} height={120} data={walletHistory}>
+                <Area type="monotone" dataKey="dd_pct" stroke="#EF5350" fill="#EF5350" fillOpacity={0.2} isAnimationActive={false} />
+              </AreaChart>
             </div>
           </div>
         </div>

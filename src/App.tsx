@@ -164,8 +164,8 @@ export default function App() {
     setIsExporting(true);
     setShowExportMenu(false);
     
-    // Small delay
-    await new Promise(r => setTimeout(r, 100));
+    // Increased delay to ensure charts are fully rendered in the off-screen DOM
+    await new Promise(r => setTimeout(r, 300));
 
     try {
       const element = document.getElementById('export-container');
