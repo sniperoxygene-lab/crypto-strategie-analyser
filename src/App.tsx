@@ -19,8 +19,13 @@ import {
   Activity,
   AlertTriangle,
   FileJson,
-  RotateCcw
+  RotateCcw,
+  Share2,
+  Copy,
+  Download as DownloadIcon
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { ExportSummary } from './components/ExportSummary';
 import { 
   cn, 
   formatCurrency, 
@@ -142,6 +147,8 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [tableSortKey, setTableSortKey] = useState<string>('sharpe');
   const [tableSortDir, setTableSortDir] = useState<'desc' | 'asc' | null>('desc');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollPosition = useRef<number>(0);
@@ -151,6 +158,49 @@ export default function App() {
       lastScrollPosition.current = containerRef.current.scrollTop;
     }
     setView(newView);
+  };
+
+  const handleExport = async (type: 'copy' | 'download') => {
+    setIsExporting(true);
+    setShowExportMenu(false);
+    
+    // Small delay
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const element = document.getElementById('export-container');
+      if (!element) throw new Error('Export container not found');
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      if (type === 'download') {
+        const link = document.createElement('a');
+        link.download = `${selectedPair?.replace(/\//g, '-')}-performance.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            alert('Image copied to clipboard!');
+          } catch (err) {
+            alert('Failed to copy. Download instead?');
+          }
+        }, 'image/png');
+      }
+    } catch (err) {
+      alert('Export failed.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -503,6 +553,38 @@ export default function App() {
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
+                <div className="h-8 w-px bg-gray-100 mx-2" />
+
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowExportMenu(!showExportMenu)} 
+                    disabled={isExporting}
+                    className={cn(
+                      "p-2.5 border border-blue-200 rounded-xl transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest",
+                      isExporting ? "bg-gray-100 text-gray-400 border-gray-100" : "hover:bg-blue-50 text-blue-600 border-blue-100"
+                    )}
+                  >
+                    {isExporting ? 'Generating...' : <><Share2 className="w-4 h-4" /> Share</>}
+                  </button>
+                  
+                  {showExportMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[60] overflow-hidden py-1 animate-in fade-in zoom-in duration-200">
+                      <button 
+                        onClick={() => handleExport('copy')}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-600"
+                      >
+                        <Copy className="w-4 h-4 text-blue-500" /> Copy Image
+                      </button>
+                      <button 
+                        onClick={() => handleExport('download')}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-600"
+                      >
+                        <DownloadIcon className="w-4 h-4 text-blue-500" /> Download PNG
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="h-8 w-px bg-gray-100 mx-2" />
                 <button 
                   onClick={() => toggleShortlist(selectedPair!)}
@@ -1149,6 +1231,18 @@ export default function App() {
         onConfirm={() => deletePair(isDeleting!)}
         onCancel={() => setIsDeleting(null)}
       />
+
+      {/* Off-screen Export Container */}
+      {view === 'detail' && selectedPair && data[selectedPair] && (
+        <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+          <ExportSummary 
+            pair={selectedPair} 
+            metrics={data[selectedPair].metrics} 
+            filteredMetrics={filteredMetrics} 
+            walletHistory={data[selectedPair].wallet_history} 
+          />
+        </div>
+      )}
     </div>
   );
 }
