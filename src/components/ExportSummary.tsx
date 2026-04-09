@@ -119,7 +119,7 @@ export function ExportSummary({
           <AreaChart width={860} height={110} data={walletHistory}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
             <XAxis dataKey="date" hide />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `-${v.toFixed(0)}%`} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `-${v.toFixed(1)}%`} />
             {exclusionDate && (
               <ReferenceArea x1={walletHistory[0].date} x2={exclusionDate} fill="#EF4444" fillOpacity={0.1} />
             )}
