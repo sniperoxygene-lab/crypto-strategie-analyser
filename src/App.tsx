@@ -153,6 +153,7 @@ export default function App() {
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState(0);
   const [zippingPair, setZippingPair] = useState<string | null>(null);
+  const [deletedPairs, setDeletedPairs] = useState<Record<string, any>>({});
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollPosition = useRef<number>(0);
@@ -206,18 +207,23 @@ export default function App() {
   };
 
   const handleExportAll = async () => {
-    const pairs = Object.keys(data);
-    if (pairs.length === 0) return;
+    // Priority: Shortlist > All Filtered Pairs
+    let pairsToExport = filteredPairs.filter(([p]) => shortlist.has(p)).map(([p]) => p);
+    if (pairsToExport.length === 0) {
+      pairsToExport = filteredPairs.map(([p]) => p);
+    }
+    
+    if (pairsToExport.length === 0) return;
 
     setIsZipping(true);
     setZipProgress(0);
     const zip = new JSZip();
 
     try {
-      for (let i = 0; i < pairs.length; i++) {
-        const pair = pairs[i];
+      for (let i = 0; i < pairsToExport.length; i++) {
+        const pair = pairsToExport[i];
         setZippingPair(pair);
-        setZipProgress(Math.floor((i / pairs.length) * 100));
+        setZipProgress(Math.floor((i / pairsToExport.length) * 100));
         
         // Wait for rendering and charts to stabilize
         await new Promise(r => setTimeout(r, 800));
@@ -227,7 +233,7 @@ export default function App() {
           const blob = await htmlToImage.toBlob(element, { 
             backgroundColor: '#ffffff', 
             width: 1000, 
-            pixelRatio: 1.5 // Lower pixel ratio for ZIP to save memory/speed
+            pixelRatio: 1.5 
           });
           if (blob) {
             zip.file(`${pair.replace(/\//g, '-')}.png`, blob);
@@ -287,10 +293,15 @@ export default function App() {
   };
 
   const deletePair = (pair: string) => {
+    const strategyToDelete = data[pair];
+    if (!strategyToDelete) return;
+
     const newData = { ...data };
     delete newData[pair];
     setData(newData);
     
+    setDeletedPairs(prev => ({ ...prev, [pair]: strategyToDelete }));
+
     const newExclusion = { ...exclusionZones };
     delete newExclusion[pair];
     setExclusionZones(newExclusion);
@@ -298,15 +309,24 @@ export default function App() {
     if (selectedPair === pair) {
       const keys = Object.keys(newData);
       if (keys.length > 0) {
-        const currentIndex = Object.keys(data).indexOf(pair);
-        const nextIndex = Math.min(currentIndex, keys.length - 1);
-        setSelectedPair(keys[nextIndex]);
+        setSelectedPair(keys[0]);
       } else {
         setSelectedPair(null);
         setView('global');
       }
     }
     setIsDeleting(null);
+  };
+
+  const restorePair = (pair: string) => {
+    const strategyToRestore = deletedPairs[pair];
+    if (!strategyToRestore) return;
+
+    setData(prev => ({ ...prev, [pair]: strategyToRestore }));
+    
+    const newDeleted = { ...deletedPairs };
+    delete newDeleted[pair];
+    setDeletedPairs(newDeleted);
   };
 
   const handleTableSort = (key: string) => {
@@ -460,11 +480,11 @@ export default function App() {
 
           <button 
             onClick={handleExportAll}
-            disabled={isZipping || Object.keys(data).length === 0}
+            disabled={isZipping || filteredPairs.length === 0}
             className="w-full mt-2 py-2.5 text-xs font-black text-white bg-black hover:bg-gray-800 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-black/10"
           >
             <DownloadIcon className="w-4 h-4" />
-            {isZipping ? 'Zipping...' : 'Download All (ZIP)'}
+            {isZipping ? 'Zipping...' : shortlist.size > 0 ? `Download ${shortlist.size} Selected` : `Download All (${filteredPairs.length})`}
           </button>
         </div>
 
@@ -556,13 +576,35 @@ export default function App() {
           </section>
         </div>
 
-        <div className="p-6 bg-white border-t border-gray-100">
+        <div className="p-6 bg-white border-t border-gray-100 flex flex-col gap-4">
+          {Object.keys(deletedPairs).length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">
+                <Trash2 className="w-3.5 h-3.5" /> Recycle Bin ({Object.keys(deletedPairs).length})
+              </h3>
+              <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {Object.keys(deletedPairs).map(pair => (
+                  <div key={pair} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
+                    <span className="text-[10px] font-bold text-gray-500 truncate">{pair}</span>
+                    <button 
+                      onClick={() => restorePair(pair)}
+                      className="p-1 text-blue-500 hover:bg-blue-50 rounded-md transition-colors shadow-sm bg-white"
+                      title="Restore pair"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <button 
             onClick={exportSelectedCsv}
             className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all shadow-xl shadow-gray-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             disabled={shortlist.size === 0}
           >
-            <Download className="w-4 h-4" /> Export Selected ({shortlist.size})
+            <Download className="w-4 h-4" /> Export CSV ({shortlist.size})
           </button>
         </div>
       </aside>
