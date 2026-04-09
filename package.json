@@ -16,6 +16,7 @@
     "@types/react-plotly.js": "^2.6.4",
     "@vitejs/plugin-react": "5.1.1",
     "clsx": "^2.1.1",
+    "dom-to-image-more": "^3.7.2",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.7.0",
     "plotly.js-basic-dist": "^3.5.0",

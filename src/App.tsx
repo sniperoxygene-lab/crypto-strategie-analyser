@@ -24,7 +24,7 @@ import {
   Copy,
   Download as DownloadIcon
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import domtoimage from 'dom-to-image-more';
 import { ExportSummary } from './components/ExportSummary';
 import { 
   cn, 
@@ -171,30 +171,28 @@ export default function App() {
       const element = document.getElementById('export-container');
       if (!element) throw new Error('Export container not found');
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
+      const canvas = await domtoimage.toPng(element, {
+        bgcolor: '#ffffff',
+        width: 1000,
+        height: 600, // Approximate height of ExportSummary
       });
 
       if (type === 'download') {
         const link = document.createElement('a');
         link.download = `${selectedPair?.replace(/\//g, '-')}-performance.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.href = canvas;
         link.click();
       } else {
-        canvas.toBlob(async (blob) => {
-          if (!blob) return;
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-            alert('Image copied to clipboard!');
-          } catch (err) {
-            alert('Failed to copy. Download instead?');
-          }
-        }, 'image/png');
+        const blob = await domtoimage.toBlob(element, { bgcolor: '#ffffff' });
+        if (!blob) return;
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          alert('Image copied to clipboard!');
+        } catch (err) {
+          alert('Failed to copy. Try downloading instead?');
+        }
       }
     } catch (err) {
       alert('Export failed.');
@@ -1234,7 +1232,7 @@ export default function App() {
 
       {/* Off-screen Export Container */}
       {view === 'detail' && selectedPair && data[selectedPair] && (
-        <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+        <div style={{ position: 'fixed', left: 0, top: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
           <ExportSummary 
             pair={selectedPair} 
             metrics={data[selectedPair].metrics} 
