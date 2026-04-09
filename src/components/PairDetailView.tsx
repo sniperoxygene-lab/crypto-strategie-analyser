@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, RotateCcw, Share2, Copy, Download as DownloadIcon } from 'lucide-react';
 import { 
   LineChart as RechartsLineChart, Line as RechartsLine, XAxis as RechartsXAxis, 
   YAxis as RechartsYAxis, CartesianGrid as RechartsCartesianGrid, 
@@ -8,8 +8,10 @@ import {
   Bar as RechartsBar, Cell as RechartsCell, PieChart as RechartsPieChart, 
   Pie as RechartsPie, Legend as RechartsLegend, ReferenceLine, LabelList, ReferenceArea
 } from 'recharts';
+import html2canvas from 'html2canvas';
 import { formatCurrency, cn, calculateFilteredMetrics } from '../utils';
 import { ConfirmationModal } from './ConfirmationModal';
+import { ExportSummary } from './ExportSummary';
 
 interface PairDetailViewProps {
   pair: string;
@@ -79,6 +81,8 @@ export function PairDetailView({ pair, data, onBack, onPrev, onNext, onDeletePai
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [tradeFilter, setTradeFilter] = useState({ year: 'ALL', side: 'ALL', reason: 'ALL' });
   const [showSecondary, setShowSecondary] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Exclusion Zone State
   const [exclusionZones, setExclusionZones] = useState<Record<string, string>>(() => {
@@ -170,6 +174,51 @@ export function PairDetailView({ pair, data, onBack, onPrev, onNext, onDeletePai
     return val;
   };
 
+  const handleExport = async (type: 'copy' | 'download') => {
+    setIsExporting(true);
+    setShowExportMenu(false);
+    
+    // Small delay to ensure any dynamic content is settled
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const element = document.getElementById('export-container');
+      if (!element) throw new Error('Export container not found');
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      if (type === 'download') {
+        const link = document.createElement('a');
+        link.download = `${pair.replace(/\//g, '-')}-performance.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            alert('Image copied to clipboard!');
+          } catch (err) {
+            console.error('Clipboard error:', err);
+            alert('Failed to copy. Download instead?');
+          }
+        }, 'image/png');
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F6FA] flex flex-col">
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -183,9 +232,41 @@ export function PairDetailView({ pair, data, onBack, onPrev, onNext, onDeletePai
             {m.hyperliquid && <span className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full uppercase tracking-wide">Hyperliquid Ready</span>}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowConfirmDelete(true)} className="p-2 mr-4 border border-red-200 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
+            <button onClick={() => setShowConfirmDelete(true)} className="p-2 border border-red-200 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Delete Pair">
               <Trash2 className="w-5 h-5" />
             </button>
+            
+            <div className="relative">
+              <button 
+                onClick={() => setShowExportMenu(!showExportMenu)} 
+                disabled={isExporting}
+                className={cn(
+                  "p-2 border border-blue-200 rounded-lg transition-colors flex items-center gap-2 font-bold text-xs",
+                  isExporting ? "bg-gray-100 text-gray-400 border-gray-200" : "hover:bg-blue-50 text-blue-600"
+                )}
+              >
+                {isExporting ? 'Generating...' : <><Share2 className="w-5 h-5" /> Share</>}
+              </button>
+              
+              {showExportMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-[60] overflow-hidden py-1 animate-in fade-in zoom-in duration-200">
+                  <button 
+                    onClick={() => handleExport('copy')}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-700"
+                  >
+                    <Copy className="w-4 h-4 text-blue-500" /> Copy Image
+                  </button>
+                  <button 
+                    onClick={() => handleExport('download')}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-700"
+                  >
+                    <DownloadIcon className="w-4 h-4 text-blue-500" /> Download PNG
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="h-6 w-px bg-gray-300 mx-2" />
             <button onClick={onPrev} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><ChevronLeft className="w-5 h-5" /></button>
             <button onClick={onNext} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><ChevronRight className="w-5 h-5" /></button>
           </div>
@@ -419,6 +500,16 @@ export function PairDetailView({ pair, data, onBack, onPrev, onNext, onDeletePai
             </>
           ) : <div className="p-8 space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-64 w-full" /></div>}
         </div>
+      </div>
+
+      {/* Off-screen Export Container */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+        <ExportSummary 
+          pair={pair} 
+          metrics={m} 
+          filteredMetrics={filteredMetrics} 
+          walletHistory={walletHistory} 
+        />
       </div>
     </div>
   );
