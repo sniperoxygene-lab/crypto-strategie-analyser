@@ -811,6 +811,7 @@ export default function App() {
                 <MetricCard label="Trades / Year" value={activeStrategy.metrics.trades_per_year} filteredValue={filteredMetrics?.trades_per_year} formatter={(v: number) => v.toFixed(1)} />
                 <MetricCard label="Best Trade" value={activeStrategy.metrics.best_trade_pct} filteredValue={filteredMetrics?.best_trade_pct} formatter={formatPct} />
                 <MetricCard label="Worst Trade" value={activeStrategy.metrics.worst_trade_pct} filteredValue={filteredMetrics?.worst_trade_pct} formatter={formatPct} isPositiveBetter={false} />
+                <MetricCard label="Duration" value={activeStrategy.metrics.duration} filteredValue={filteredMetrics?.duration} icon={Activity} />
                 <MetricCard label="Max Consec Wins" value={activeStrategy.metrics.max_consec_wins} filteredValue={filteredMetrics?.max_consec_wins} />
                 <MetricCard label="Max Consec Loss" value={activeStrategy.metrics.max_consec_losses} filteredValue={filteredMetrics?.max_consec_losses} isPositiveBetter={false} />
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-center items-center group hover:shadow-md transition-shadow">
@@ -1232,12 +1233,14 @@ export default function App() {
 
       {/* Off-screen Export Container */}
       {view === 'detail' && selectedPair && data[selectedPair] && (
-        <div style={{ position: 'fixed', left: 0, top: 0, height: 0, overflow: 'hidden', zIndex: -100, pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', left: 0, top: 0, height: '2200px', width: '1000px', overflow: 'hidden', zIndex: -100, pointerEvents: 'none' }}>
           <ExportSummary 
             pair={selectedPair} 
             metrics={data[selectedPair].metrics} 
             filteredMetrics={filteredMetrics} 
-            walletHistory={data[selectedPair].wallet_history} 
+            walletHistory={data[selectedPair].wallet_history}
+            exclusionDate={exclusionZones[selectedPair] || null}
+            yearlyPnlData={data[selectedPair].precomputed.yearlyPnlData}
           />
         </div>
       )}

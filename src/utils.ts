@@ -135,7 +135,13 @@ export function calculateFilteredMetrics(strategy: any, exclusionDate: string) {
     worst_trade_pct: worstTradePct,
     max_consec_wins: maxWins,
     max_consec_losses: maxLosses,
-    start_capital: startWallet
+    start_capital: startWallet,
+    duration: (() => {
+      const y = Math.floor(days / 365.25);
+      const m = Math.floor((days % 365.25) / 30.44);
+      const d = Math.floor(days % 30.44);
+      return `${y > 0 ? `${y}y ` : ''}${m > 0 ? `${m}m ` : ''}${d}d`;
+    })()
   };
 }
 
@@ -196,8 +202,20 @@ export function processStrategyData(rawJson: any) {
       });
     });
 
+    const startDateRaw = new Date(rawHistory[0].date);
+    const endDateRaw = new Date(rawHistory[rawHistory.length - 1].date);
+    const diffDays = (endDateRaw.getTime() - startDateRaw.getTime()) / (1000 * 60 * 60 * 24);
+    const y = Math.floor(diffDays / 365.25);
+    const m = Math.floor((diffDays % 365.25) / 30.44);
+    const d = Math.floor(diffDays % 30.44);
+    const durationStr = `${y > 0 ? `${y}y ` : ''}${m > 0 ? `${m}m ` : ''}${d}d`;
+
     processed[pair] = {
       ...pairData,
+      metrics: {
+        ...pairData.metrics,
+        duration: durationStr
+      },
       raw_wallet_history: rawHistory,
       wallet_history: formattedHistory,
       precomputed: {
