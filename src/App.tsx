@@ -25,6 +25,7 @@ import {
   Download as DownloadIcon
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
+import JSZip from 'jszip';
 import { ExportSummary } from './components/ExportSummary';
 import { 
   cn, 
@@ -149,6 +150,9 @@ export default function App() {
   const [tableSortDir, setTableSortDir] = useState<'desc' | 'asc' | null>('desc');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
+  const [zipProgress, setZipProgress] = useState(0);
+  const [zippingPair, setZippingPair] = useState<string | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollPosition = useRef<number>(0);
@@ -198,6 +202,50 @@ export default function App() {
       alert('Export failed.');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportAll = async () => {
+    const pairs = Object.keys(data);
+    if (pairs.length === 0) return;
+
+    setIsZipping(true);
+    setZipProgress(0);
+    const zip = new JSZip();
+
+    try {
+      for (let i = 0; i < pairs.length; i++) {
+        const pair = pairs[i];
+        setZippingPair(pair);
+        setZipProgress(Math.floor((i / pairs.length) * 100));
+        
+        // Wait for rendering and charts to stabilize
+        await new Promise(r => setTimeout(r, 800));
+
+        const element = document.getElementById('export-container');
+        if (element) {
+          const blob = await htmlToImage.toBlob(element, { 
+            backgroundColor: '#ffffff', 
+            width: 1000, 
+            pixelRatio: 1.5 // Lower pixel ratio for ZIP to save memory/speed
+          });
+          if (blob) {
+            zip.file(`${pair.replace(/\//g, '-')}.png`, blob);
+          }
+        }
+      }
+
+      setZipProgress(100);
+      const content = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = `strategies_audit_${new Date().toISOString().split('T')[0]}.zip`;
+      link.click();
+    } catch (err) {
+      alert('Error during bulk export.');
+    } finally {
+      setIsZipping(false);
+      setZippingPair(null);
     }
   };
 
@@ -408,6 +456,15 @@ export default function App() {
             className="w-full mt-3 py-2.5 text-xs font-black text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-center gap-2 transition-colors border border-blue-100"
           >
             <Database className="w-4 h-4" /> Load Demo Data
+          </button>
+
+          <button 
+            onClick={handleExportAll}
+            disabled={isZipping || Object.keys(data).length === 0}
+            className="w-full mt-2 py-2.5 text-xs font-black text-white bg-black hover:bg-gray-800 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-black/10"
+          >
+            <DownloadIcon className="w-4 h-4" />
+            {isZipping ? 'Zipping...' : 'Download All (ZIP)'}
           </button>
         </div>
 
@@ -1231,16 +1288,48 @@ export default function App() {
         onCancel={() => setIsDeleting(null)}
       />
 
+      {/* Zip Progress Modal */}
+      {isZipping && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl scale-in italic-font">
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+                <DownloadIcon className="w-10 h-10 text-blue-600 animate-bounce" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Preparing ZIP Archive</h3>
+                <p className="text-gray-500 font-medium">Capturing: <span className="text-blue-600 font-bold">{zippingPair}</span></p>
+              </div>
+              
+              <div className="w-full bg-gray-100 h-4 rounded-full overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-full transition-all duration-500 ease-out"
+                  style={{ width: `${zipProgress}%` }}
+                />
+              </div>
+              
+              <div className="text-sm font-black text-gray-400 uppercase tracking-widest">
+                {zipProgress}% Complete
+              </div>
+              
+              <div className="text-xs text-gray-400 leading-relaxed max-w-[280px]">
+                Please stay on this tab while we generate high-quality audit cards for every strategy.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Off-screen Export Container */}
-      {view === 'detail' && selectedPair && data[selectedPair] && (
+      {(view === 'detail' || isZipping) && (selectedPair || zippingPair) && data[zippingPair || selectedPair!] && (
         <div style={{ position: 'fixed', left: 0, top: 0, height: '2200px', width: '1000px', overflow: 'hidden', zIndex: -100, pointerEvents: 'none' }}>
           <ExportSummary 
-            pair={selectedPair} 
-            metrics={data[selectedPair].metrics} 
-            filteredMetrics={filteredMetrics} 
-            walletHistory={data[selectedPair].wallet_history}
-            exclusionDate={exclusionZones[selectedPair] || null}
-            yearlyPnlData={data[selectedPair].precomputed.yearlyPnlData}
+            pair={zippingPair || selectedPair!} 
+            metrics={data[zippingPair || selectedPair!].metrics} 
+            filteredMetrics={zippingPair ? null : filteredMetrics} 
+            walletHistory={data[zippingPair || selectedPair!].wallet_history}
+            exclusionDate={zippingPair ? null : (exclusionZones[selectedPair!] || null)}
+            yearlyPnlData={data[zippingPair || selectedPair!].precomputed.yearlyPnlData}
           />
         </div>
       )}
